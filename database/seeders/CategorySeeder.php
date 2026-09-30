@@ -2,21 +2,35 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Category;
+use Illuminate\Database\Seeder;
 
 class CategorySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        Category::insert([
-            ['name' => 'Cây Để Bàn', 'slug' => 'cay-de-ban', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Cây Phong Thủy', 'slug' => 'cay-phong-thuy', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Sen Đá & Xương Rồng', 'slug' => 'sen-da-xuong-rong', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Hoa Tươi & Chậu Hoa', 'slug' => 'hoa-tuoi-chau-hoa', 'created_at' => now(), 'updated_at' => now()],
-        ]);
+        $categories = [
+
+            'Cây phong thủy',
+
+            'Cây để bàn',
+
+            'Sen đá & Hoa tươi',
+
+        ];
+
+
+        foreach ($categories as $name) {
+
+            Category::firstOrCreate([
+                'name' => $name,
+            ]);
+
+        }
+
+
+        $this->command?->info(
+            'Đã tạo 3 danh mục GreenLife Flora.'
+        );
     }
 }
