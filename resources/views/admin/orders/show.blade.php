@@ -226,24 +226,46 @@
 
 
     $shippingFee =
-        (int) (
-            $order->ghn_total_fee
-            ?? 0
-        );
+    (int) (
+        $order->ghn_total_fee
+        ?? 0
+    );
+
+$total =
+    (int) (
+        $order->total_price
+        ?? 0
+    );
+
+$discount =
+    (int) (
+        $order->discount_amount
+        ?? 0
+    );
+
+$productTotal =
+    (int) (
+        $order->subtotal_price
+        ?? 0
+    );
 
 
-    $total =
-        (int) (
-            $order->total_price
-            ?? 0
-        );
-
+/*
+|--------------------------------------------------------------------------
+| HỖ TRỢ ĐƠN CŨ
+|--------------------------------------------------------------------------
+| Những đơn tạo trước khi có voucher chưa có subtotal_price.
+*/
+if ($productTotal <= 0) {
 
     $productTotal =
         max(
             0,
-            $total - $shippingFee
+            $total
+            - $shippingFee
+            + $discount
         );
+}
 
 @endphp
 
@@ -1019,6 +1041,42 @@
 
                 </div>
 
+                @if(
+    !empty($order->coupon_code)
+    &&
+    $discount > 0
+)
+
+    <div
+        class="
+            d-flex
+            justify-content-between
+            mb-3
+            text-success
+        "
+    >
+
+        <span>
+            🎟 Voucher
+            <strong>
+                {{ $order->coupon_code }}
+            </strong>
+        </span>
+
+        <strong>
+            -{{
+                number_format(
+                    $discount,
+                    0,
+                    ',',
+                    '.'
+                )
+            }} đ
+        </strong>
+
+    </div>
+
+@endif
 
 
                 <div

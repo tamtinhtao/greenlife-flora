@@ -1,0 +1,15 @@
+warning: in the working copy of 'resources/views/layouts/admin.blade.php', CRLF will be replaced by LF the next time Git touches it
+ app/Http/Controllers/ProductController.php    | 276 [32m+++++++[m[31m-[m
+ app/Http/Controllers/User/OrderController.php | 667 [32m++++++++++++++[m[31m----[m
+ app/Models/User.php                           |  18 [32m+[m
+ resources/views/admin/orders/index.blade.php  |   2 [32m+[m[31m-[m
+ resources/views/admin/orders/show.blade.php   |  84 [32m++[m[31m-[m
+ resources/views/cart/checkout.blade.php       | 447 [32m+++++++++++[m[31m-[m
+ resources/views/cart/index.blade.php          |   2 [32m+[m[31m-[m
+ resources/views/home.blade.php                | 289 [32m++[m[31m------[m
+ resources/views/layouts/admin.blade.php       | 418 [32m+++++[m[31m-------[m
+ resources/views/orders/index.blade.php        | 934 [32m+++++++++++++++++++++[m[31m-----[m
+ resources/views/orders/my-orders.blade.php    | 246 [32m+++++[m[31m--[m
+ resources/views/products/show.blade.php       | 741 [32m++++++++++++++++++[m[31m--[m
+ routes/web.php                                |  93 [32m+++[m
+ 13 files changed, 3330 insertions(+), 887 deletions(-)

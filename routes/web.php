@@ -15,6 +15,8 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\UserOrderController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\ProductViewController;
 
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
@@ -24,11 +26,13 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\CouponController as AdminCouponController;
 
 use App\Http\Controllers\User\GHNController;
 use App\Http\Controllers\User\OrderController as UserPaymentOrderController;
 use App\Http\Controllers\User\MomoController;
 use App\Http\Controllers\User\ChatController as UserChatController;
+use App\Http\Controllers\User\CouponController as UserCouponController;
 
 
 /*
@@ -253,6 +257,61 @@ Route::middleware([
     'role:user',
 ])->group(function () {
 
+    /*
+|--------------------------------------------------------------------------
+| LỊCH SỬ XEM SẢN PHẨM
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/recently-viewed',
+    [
+        ProductViewController::class,
+        'index'
+    ]
+)->name('product-history.index');
+
+
+Route::delete(
+    '/recently-viewed',
+    [
+        ProductViewController::class,
+        'clear'
+    ]
+)->name('product-history.clear');
+
+    /*
+|--------------------------------------------------------------------------
+| WISHLIST
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/wishlist',
+    [
+        WishlistController::class,
+        'index'
+    ]
+)->name('wishlist.index');
+
+
+Route::post(
+    '/wishlist/{product}',
+    [
+        WishlistController::class,
+        'store'
+    ]
+)->name('wishlist.store');
+
+
+Route::delete(
+    '/wishlist/{product}',
+    [
+        WishlistController::class,
+        'destroy'
+    ]
+)->name('wishlist.destroy');
+
 
     /*
     |--------------------------------------------------------------------------
@@ -269,6 +328,28 @@ Route::middleware([
     )->name('user.payment.process');
 
 
+    /*
+|--------------------------------------------------------------------------
+| VOUCHER USER
+|--------------------------------------------------------------------------
+*/
+
+Route::post(
+    '/checkout/coupon/apply',
+    [
+        UserCouponController::class,
+        'apply'
+    ]
+)->name('coupon.apply');
+
+
+Route::delete(
+    '/checkout/coupon/remove',
+    [
+        UserCouponController::class,
+        'remove'
+    ]
+)->name('coupon.remove');
     /*
     |--------------------------------------------------------------------------
     | MOMO
@@ -612,6 +693,18 @@ Route::prefix('admin')
         'role:admin',
     ])
     ->group(function () {
+        /*
+|--------------------------------------------------------------------------
+| VOUCHER / KHUYẾN MÃI
+|--------------------------------------------------------------------------
+*/
+
+Route::resource(
+    'coupons',
+    AdminCouponController::class
+)->except([
+    'show',
+]);
 
         /*
 |--------------------------------------------------------------------------

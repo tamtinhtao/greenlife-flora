@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PaymentTransaction;
+use App\Models\Coupon;
+use App\Models\CouponUsage;
 use App\Services\GHNService;
 use App\Services\GHNOrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
@@ -68,10 +71,12 @@ class OrderController extends Controller
             []
         );
 
+
         $checkoutContext = session()->get(
             'checkout_context',
             []
         );
+
 
         $mode = $checkoutContext['mode'] ?? 'cart';
 
@@ -83,6 +88,7 @@ class OrderController extends Controller
         */
 
         if (empty($cart)) {
+
             return redirect()
                 ->route('cart.index')
                 ->with(
@@ -100,8 +106,145 @@ class OrderController extends Controller
 
         $subtotal = collect($cart)->sum(
             fn ($item) =>
-                $item['price'] * $item['quantity']
+                $item['price']
+                *
+                $item['quantity']
         );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | KIỂM TRA LẠI VOUCHER TRÊN SERVER
+        |--------------------------------------------------------------------------
+        |
+        | Không tin hoàn toàn kết quả hiển thị ở trình duyệt.
+        | Trước khi tạo đơn phải kiểm tra lại voucher và lịch sử sử dụng.
+        |--------------------------------------------------------------------------
+        */
+
+        $coupon = null;
+        $discount = 0;
+
+        $couponCode =
+            session('coupon_code');
+
+
+        if ($couponCode) {
+
+            $coupon =
+                Coupon::where(
+                    'code',
+                    $couponCode
+                )->first();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | VOUCHER KHÔNG CÒN TỒN TẠI
+            |--------------------------------------------------------------------------
+            */
+
+            if (!$coupon) {
+
+                session()->forget([
+                    'coupon_code',
+                    'coupon_discount',
+                ]);
+
+
+                return back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        'Voucher không còn tồn tại. Vui lòng chọn lại mã giảm giá.'
+                    );
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | USER ĐÃ DÙNG VOUCHER NÀY TRƯỚC ĐÓ
+            |--------------------------------------------------------------------------
+            */
+
+            $alreadyUsed =
+                CouponUsage::where(
+                    'coupon_id',
+                    $coupon->id
+                )
+                    ->where(
+                        'user_id',
+                        Auth::id()
+                    )
+                    ->exists();
+
+
+            if ($alreadyUsed) {
+
+                session()->forget([
+                    'coupon_code',
+                    'coupon_discount',
+                ]);
+
+
+                return back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        'Bạn đã sử dụng voucher '
+                        .
+                        $coupon->code
+                        .
+                        ' trước đó.'
+                    );
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | KIỂM TRA VOUCHER CÒN HỢP LỆ
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                !$coupon->isValid(
+                    (float) $subtotal
+                )
+            ) {
+
+                session()->forget([
+                    'coupon_code',
+                    'coupon_discount',
+                ]);
+
+
+                return back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        'Voucher '
+                        .
+                        $coupon->code
+                        .
+                        ' không còn hợp lệ với đơn hàng này.'
+                    );
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | TÍNH TIỀN GIẢM
+            |--------------------------------------------------------------------------
+            */
+
+            $discount =
+                (int) round(
+                    $coupon
+                        ->calculateDiscount(
+                            (float) $subtotal
+                        )
+                );
+        }
 
 
         /*
@@ -110,11 +253,13 @@ class OrderController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $totalWeight = collect($cart)->sum(
-            fn ($item) =>
-                $ghn->productWeight()
-                * (int) $item['quantity']
-        );
+        $totalWeight =
+            collect($cart)->sum(
+                fn ($item) =>
+                    $ghn->productWeight()
+                    *
+                    (int) $item['quantity']
+            );
 
 
         /*
@@ -123,34 +268,41 @@ class OrderController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $feeResponse = $ghn->calculateFee(
-            array_merge(
-                [
-                    'from_district_id' =>
-                        (int) config(
-                            'services.ghn.from_district_id'
-                        ),
+        $feeResponse =
+            $ghn->calculateFee(
+                array_merge(
+                    [
+                        'from_district_id' =>
+                            (int) config(
+                                'services.ghn.from_district_id'
+                            ),
 
-                    'to_district_id' =>
-                        (int) $request->to_district_id,
+                        'to_district_id' =>
+                            (int) $request->to_district_id,
 
-                    'to_ward_code' =>
-                        (string) $request->to_ward_code,
-                ],
+                        'to_ward_code' =>
+                            (string) $request->to_ward_code,
+                    ],
 
-                $ghn->packageParameters(
-                    $totalWeight
+                    $ghn->packageParameters(
+                        $totalWeight
+                    )
                 )
-            )
-        );
+            );
+
 
         $shippingFee =
             (
-                isset($feeResponse['code'])
+                isset(
+                    $feeResponse['code']
+                )
                 &&
                 $feeResponse['code'] == 200
             )
-                ? (int) ($feeResponse['data']['total'] ?? 0)
+                ? (int) (
+                    $feeResponse['data']['total']
+                    ?? 0
+                )
                 : 0;
 
 
@@ -161,91 +313,316 @@ class OrderController extends Controller
         */
 
         $finalTotal =
-            $subtotal + $shippingFee;
+            max(
+                0,
+
+                $subtotal
+                +
+                $shippingFee
+                -
+                $discount
+            );
 
 
         /*
         |--------------------------------------------------------------------------
-        | 7. TẠO ORDER + ORDER ITEM
+        | 7. TẠO ORDER + ORDER ITEM + COUPON USAGE
         |--------------------------------------------------------------------------
         */
 
-        $order = DB::transaction(
-            function () use (
-                $request,
-                $shippingFee,
-                $finalTotal,
-                $cart
-            ) {
-
-                $order = Order::create([
-
-                    'user_id' =>
-                        Auth::id(),
-
-                    'customer_name' =>
-                        $request->customer_name,
-
-                    'customer_email' =>
-                        Auth::user()->email,
-
-                    'customer_phone' =>
-                        $request->customer_phone,
-
-                    'shipping_address' =>
-                        $request->shipping_address,
-
-                    'note' =>
-                        $request->note,
-
-                    'payment_method' =>
-                        $request->payment_method,
-
-                    'total_price' =>
-                        $finalTotal,
-
-                    'status' =>
-                        'pending',
-
-                    'shipping_status' =>
-                        'pending',
-
-                    'ghn_total_fee' =>
-                        $shippingFee,
-
-                    'to_district_id' =>
-                        (int) $request->to_district_id,
-
-                    'to_ward_code' =>
-                        (string) $request->to_ward_code,
-                ]);
+        $order =
+            DB::transaction(
+                function () use (
+                    $request,
+                    $shippingFee,
+                    $finalTotal,
+                    $cart,
+                    $subtotal,
+                    $discount,
+                    $coupon
+                ) {
 
 
-                /*
-                |------------------------------------------------------------------
-                | PRODUCT ID NẰM Ở KEY CỦA CART
-                |------------------------------------------------------------------
-                */
+                    /*
+                    |--------------------------------------------------------------------------
+                    | KHÓA VOUCHER VÀ KIỂM TRA LẠI TRONG TRANSACTION
+                    |--------------------------------------------------------------------------
+                    |
+                    | Tránh trường hợp:
+                    | - cùng user gửi 2 request rất nhanh
+                    | - voucher vừa hết lượt ở request khác
+                    |--------------------------------------------------------------------------
+                    */
 
-                foreach ($cart as $productId => $item) {
-                    OrderItem::create([
-                        'order_id' =>
-                            $order->id,
+                    $lockedCoupon = null;
 
-                        'product_id' =>
-                            $productId,
+                    $orderDiscount =
+                        $discount;
 
-                        'quantity' =>
-                            $item['quantity'],
+                    $orderTotal =
+                        $finalTotal;
 
-                        'price' =>
-                            $item['price'],
-                    ]);
+
+                    if ($coupon) {
+
+                        $lockedCoupon =
+                            Coupon::whereKey(
+                                $coupon->id
+                            )
+                                ->lockForUpdate()
+                                ->first();
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | KIỂM TRA LẠI VOUCHER
+                        |--------------------------------------------------------------------------
+                        */
+
+                        if (
+                            !$lockedCoupon
+                            ||
+                            !$lockedCoupon->isValid(
+                                (float) $subtotal
+                            )
+                        ) {
+
+                            session()->forget([
+                                'coupon_code',
+                                'coupon_discount',
+                            ]);
+
+
+                            throw ValidationException::withMessages([
+                                'coupon' =>
+                                    'Voucher không còn hợp lệ. Vui lòng chọn mã khác.',
+                            ]);
+                        }
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | KIỂM TRA USER ĐÃ DÙNG CHƯA
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $alreadyUsed =
+                            CouponUsage::where(
+                                'coupon_id',
+                                $lockedCoupon->id
+                            )
+                                ->where(
+                                    'user_id',
+                                    Auth::id()
+                                )
+                                ->exists();
+
+
+                        if ($alreadyUsed) {
+
+                            session()->forget([
+                                'coupon_code',
+                                'coupon_discount',
+                            ]);
+
+
+                            throw ValidationException::withMessages([
+                                'coupon' =>
+                                    'Bạn đã sử dụng voucher '
+                                    .
+                                    $lockedCoupon->code
+                                    .
+                                    ' trước đó.',
+                            ]);
+                        }
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | TÍNH LẠI GIẢM GIÁ TRONG TRANSACTION
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $orderDiscount =
+                            (int) round(
+                                $lockedCoupon
+                                    ->calculateDiscount(
+                                        (float) $subtotal
+                                    )
+                            );
+
+
+                        $orderTotal =
+                            max(
+                                0,
+
+                                $subtotal
+                                +
+                                $shippingFee
+                                -
+                                $orderDiscount
+                            );
+                    }
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | TẠO ORDER
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $order =
+                        Order::create([
+
+                            'user_id' =>
+                                Auth::id(),
+
+                            'customer_name' =>
+                                $request->customer_name,
+
+                            'customer_email' =>
+                                Auth::user()->email,
+
+                            'customer_phone' =>
+                                $request->customer_phone,
+
+                            'shipping_address' =>
+                                $request->shipping_address,
+
+                            'note' =>
+                                $request->note,
+
+                            'payment_method' =>
+                                $request->payment_method,
+
+                            'total_price' =>
+                                $orderTotal,
+
+                            'status' =>
+                                'pending',
+
+                            'shipping_status' =>
+                                'pending',
+
+                            'ghn_total_fee' =>
+                                $shippingFee,
+
+                            'to_district_id' =>
+                                (int) $request->to_district_id,
+
+                            'to_ward_code' =>
+                                (string) $request->to_ward_code,
+                        ]);
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | LƯU SNAPSHOT VOUCHER VÀO ORDER
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $order->forceFill([
+
+                        'coupon_id' =>
+                            $lockedCoupon?->id,
+
+                        'coupon_code' =>
+                            $lockedCoupon?->code,
+
+                        'subtotal_price' =>
+                            $subtotal,
+
+                        'discount_amount' =>
+                            $orderDiscount,
+
+                    ])->save();
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | PRODUCT ID NẰM Ở KEY CỦA CART
+                    |--------------------------------------------------------------------------
+                    */
+
+                    foreach (
+                        $cart
+                        as $productId => $item
+                    ) {
+
+                        OrderItem::create([
+
+                            'order_id' =>
+                                $order->id,
+
+                            'product_id' =>
+                                $productId,
+
+                            'quantity' =>
+                                $item['quantity'],
+
+                            'price' =>
+                                $item['price'],
+                        ]);
+                    }
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | GHI NHẬN USER ĐÃ DÙNG VOUCHER
+                    |--------------------------------------------------------------------------
+                    |
+                    | Chỉ ghi sau khi Order đã tạo thành công.
+                    |--------------------------------------------------------------------------
+                    */
+
+                    if ($lockedCoupon) {
+
+                        CouponUsage::create([
+
+                            'coupon_id' =>
+                                $lockedCoupon->id,
+
+                            'user_id' =>
+                                Auth::id(),
+
+                            'order_id' =>
+                                $order->id,
+
+                            'discount_amount' =>
+                                $orderDiscount,
+
+                            'used_at' =>
+                                now(),
+                        ]);
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | TĂNG TỔNG LƯỢT ĐÃ DÙNG
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $lockedCoupon->increment(
+                            'used_count'
+                        );
+                    }
+
+
+                    return $order;
                 }
+            );
 
-                return $order;
-            }
-        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | ORDER ĐÃ TẠO THÀNH CÔNG -> XÓA VOUCHER TẠM
+        |--------------------------------------------------------------------------
+        */
+
+        session()->forget([
+            'coupon_code',
+            'coupon_discount',
+        ]);
 
 
         /*
@@ -259,9 +636,13 @@ class OrderController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if ($request->payment_method === 'momo') {
+        if (
+            $request->payment_method
+            === 'momo'
+        ) {
 
             PaymentTransaction::create([
+
                 'order_id' =>
                     $order->id,
 
@@ -277,35 +658,45 @@ class OrderController extends Controller
 
 
             /*
-            |----------------------------------------------------------------------
+            |--------------------------------------------------------------------------
             | GHI NHỚ CÁC PRODUCT ĐANG THANH TOÁN
-            |----------------------------------------------------------------------
+            |--------------------------------------------------------------------------
             */
 
             session()->put(
-                'momo_purchase_context.' . $order->id,
+                'momo_purchase_context.'
+                .
+                $order->id,
+
                 [
                     'mode' =>
                         $mode,
 
                     'product_ids' =>
-                        array_keys($cart),
+                        array_keys(
+                            $cart
+                        ),
                 ]
             );
 
 
             /*
-            |----------------------------------------------------------------------
-            | ORDER ĐÃ ĐƯỢC TẠO, KHÔNG CẦN GIỮ CHECKOUT TẠM
-            |----------------------------------------------------------------------
+            |--------------------------------------------------------------------------
+            | ORDER ĐÃ TẠO, KHÔNG CẦN GIỮ CHECKOUT TẠM
+            |--------------------------------------------------------------------------
             |
             | Giỏ chính cart vẫn còn nguyên.
             | Nếu MoMo thất bại, sản phẩm vẫn ở giỏ.
-            |----------------------------------------------------------------------
+            |--------------------------------------------------------------------------
             */
 
-            session()->forget('checkout_cart');
-            session()->forget('checkout_context');
+            session()->forget(
+                'checkout_cart'
+            );
+
+            session()->forget(
+                'checkout_context'
+            );
 
 
             return redirect()->route(
@@ -322,6 +713,7 @@ class OrderController extends Controller
         */
 
         PaymentTransaction::create([
+
             'order_id' =>
                 $order->id,
 
@@ -350,8 +742,14 @@ class OrderController extends Controller
             $mode
         );
 
-        session()->forget('checkout_cart');
-        session()->forget('checkout_context');
+
+        session()->forget(
+            'checkout_cart'
+        );
+
+        session()->forget(
+            'checkout_context'
+        );
 
 
         /*
@@ -360,26 +758,43 @@ class OrderController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $order->load('items.product');
+        $order->load(
+            'items.product'
+        );
+
 
         $ghnOrderResponse =
-            $ghnOrders->create($order);
+            $ghnOrders->create(
+                $order
+            );
 
 
         if (
-            ($ghnOrderResponse['code'] ?? null) == 200
+            (
+                $ghnOrderResponse['code']
+                ?? null
+            ) == 200
             &&
             !empty(
-                $ghnOrderResponse['data']['order_code']
+                $ghnOrderResponse[
+                    'data'
+                ][
+                    'order_code'
+                ]
             )
         ) {
 
             $order->update([
+
                 'status' =>
                     'cod_ordered',
 
                 'ghn_order_code' =>
-                    $ghnOrderResponse['data']['order_code'],
+                    $ghnOrderResponse[
+                        'data'
+                    ][
+                        'order_code'
+                    ],
 
                 'shipping_status' =>
                     'ready_to_pick',
@@ -387,11 +802,18 @@ class OrderController extends Controller
 
 
             return redirect()
-                ->route('my-orders.index')
+                ->route(
+                    'my-orders.index'
+                )
                 ->with(
                     'success',
                     'Đặt hàng thành công! Mã vận đơn GHN: '
-                    . $ghnOrderResponse['data']['order_code']
+                    .
+                    $ghnOrderResponse[
+                        'data'
+                    ][
+                        'order_code'
+                    ]
                 );
         }
 
@@ -410,14 +832,21 @@ class OrderController extends Controller
             $ghnOrderResponse ?? []
         );
 
+
         $order->update([
-            'status' => 'cod_ordered',
-            'shipping_status' => 'pending',
+
+            'status' =>
+                'cod_ordered',
+
+            'shipping_status' =>
+                'pending',
         ]);
 
 
         return redirect()
-            ->route('my-orders.index')
+            ->route(
+                'my-orders.index'
+            )
             ->with(
                 'warning',
                 'Đặt hàng thành công nhưng chưa thể tạo vận đơn GHN tự động.'
@@ -446,7 +875,11 @@ class OrderController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if ($mode === 'buy-now') {
+        if (
+            $mode
+            === 'buy-now'
+        ) {
+
             return;
         }
 
@@ -457,10 +890,11 @@ class OrderController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $mainCart = session()->get(
-            'cart',
-            []
-        );
+        $mainCart =
+            session()->get(
+                'cart',
+                []
+            );
 
 
         /*
@@ -470,10 +904,17 @@ class OrderController extends Controller
         */
 
         foreach (
-            array_keys($purchasedCart)
+            array_keys(
+                $purchasedCart
+            )
             as $productId
         ) {
-            unset($mainCart[$productId]);
+
+            unset(
+                $mainCart[
+                    $productId
+                ]
+            );
         }
 
 

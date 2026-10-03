@@ -35,58 +35,9 @@
 
 <body>
 
-{{-- NAVBAR --}}
-<nav class="navbar navbar-dark bg-success mb-4">
 
-    <div class="container">
+@include('partials.store-navbar')
 
-        <a
-            href="{{ route('home') }}"
-            class="navbar-brand fw-bold"
-        >
-            🌿 GreenLife Flora
-        </a>
-
-        <div class="d-flex align-items-center gap-2">
-
-            <span class="text-white">
-                👤 {{ auth()->user()->name }}
-            </span>
-
-            <a
-                href="{{ route('cart.index') }}"
-                class="btn btn-light btn-sm"
-            >
-                🛒 Giỏ Hàng
-            </a>
-
-            <a
-                href="{{ route('home') }}"
-                class="btn btn-outline-light btn-sm"
-            >
-                🏠 Trang Chủ
-            </a>
-
-            <form
-                action="{{ route('logout') }}"
-                method="POST"
-                class="d-inline"
-            >
-                @csrf
-
-                <button
-                    type="submit"
-                    class="btn btn-outline-light btn-sm"
-                >
-                    🚪 Đăng Xuất
-                </button>
-            </form>
-
-        </div>
-
-    </div>
-
-</nav>
 
 
 <div class="container mb-5">
@@ -331,28 +282,196 @@
                 </div>
 
 
-                <div class="text-end">
+                <div class="border-top pt-3 mt-3">
 
-                    <span class="fs-5">
+    @php
 
-                        Tổng tiền:
+        $shippingFee =
+            (int) (
+                $order->ghn_total_fee
+                ?? 0
+            );
 
-                        <strong class="text-danger">
+        $discount =
+            (int) (
+                $order->discount_amount
+                ?? 0
+            );
 
-                            {{ number_format($order->total_price) }} đ
+        $subtotal =
+            (int) (
+                $order->subtotal_price
+                ?? 0
+            );
 
-                        </strong>
 
-                    </span>
+        /*
+        |--------------------------------------------------------------------------
+        | HỖ TRỢ ĐƠN CŨ
+        |--------------------------------------------------------------------------
+        | Đơn cũ chưa có subtotal_price.
+        */
+        if ($subtotal <= 0) {
 
-                </div>
+            $subtotal =
+                max(
+                    0,
+                    (int) $order->total_price
+                    - $shippingFee
+                    + $discount
+                );
+        }
+
+    @endphp
+
+
+
+    {{-- ===================================================== --}}
+    {{-- TIỀN HÀNG --}}
+    {{-- ===================================================== --}}
+
+    <div
+        class="
+            d-flex
+            justify-content-end
+            gap-4
+            mb-2
+        "
+    >
+
+        <span class="text-muted">
+            Tiền hàng:
+        </span>
+
+
+        <strong
+            class="text-end"
+            style="min-width: 140px;"
+        >
+            {{ number_format($subtotal) }} đ
+        </strong>
+
+    </div>
+
+
+
+    {{-- ===================================================== --}}
+    {{-- VOUCHER --}}
+    {{-- ===================================================== --}}
+
+    @if(
+        !empty($order->coupon_code)
+        &&
+        $discount > 0
+    )
+
+        <div
+            class="
+                d-flex
+                justify-content-end
+                gap-4
+                mb-2
+                text-success
+            "
+        >
+
+            <span>
+
+                🎟 Voucher
+
+                <strong>
+                    {{ $order->coupon_code }}
+                </strong>:
+
+            </span>
+
+
+            <strong
+                class="text-end"
+                style="min-width: 140px;"
+            >
+                -{{ number_format($discount) }} đ
+            </strong>
+
+        </div>
+
+    @endif
+
+
+
+    {{-- ===================================================== --}}
+    {{-- PHÍ VẬN CHUYỂN --}}
+    {{-- ===================================================== --}}
+
+    <div
+        class="
+            d-flex
+            justify-content-end
+            gap-4
+            mb-2
+        "
+    >
+
+        <span class="text-muted">
+            Phí vận chuyển:
+        </span>
+
+
+        <strong
+            class="text-end"
+            style="min-width: 140px;"
+        >
+            {{ number_format($shippingFee) }} đ
+        </strong>
+
+    </div>
+
+
+
+    {{-- ===================================================== --}}
+    {{-- TỔNG THANH TOÁN --}}
+    {{-- ===================================================== --}}
+
+    <div
+        class="
+            d-flex
+            justify-content-end
+            align-items-center
+            gap-4
+            mt-2
+        "
+    >
+
+        <span class="fs-5">
+            Tổng thanh toán:
+        </span>
+
+
+        <strong
+            class="
+                fs-4
+                text-danger
+                text-end
+            "
+            style="min-width: 140px;"
+        >
+
+            {{
+                number_format(
+                    $order->total_price
+                )
+            }} đ
+
+        </strong>
+
+    </div>
+
+</div>
+
 
             </div>
 
         </div>
-
-
-    @empty
 
         <div class="card shadow-sm border-0">
 
@@ -385,11 +504,10 @@
 
 </div>
 
+<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
 
-<link
-    href="{{ asset('bootstrap/css/bootstrap.min.css') }}"
-    rel="stylesheet"
->
+
+
 
 </body>
 </html>

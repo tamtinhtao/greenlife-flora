@@ -7,6 +7,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Order;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Wishlist;
+use App\Models\Product;
 
 class User extends Authenticatable implements MustVerifyEmail{
     use HasFactory, Notifiable;
@@ -43,5 +45,21 @@ class User extends Authenticatable implements MustVerifyEmail{
     public function orders()
 {
     return $this->hasMany(Order::class);
+}
+public function wishlists()
+{
+    return $this->hasMany(Wishlist::class);
+}
+
+public function wishlistProducts()
+{
+    return $this->belongsToMany(
+        Product::class,
+        'wishlists'
+    )->withTimestamps();
+}
+public function productViews()
+{
+    return $this->hasMany(ProductView::class);
 }
 }

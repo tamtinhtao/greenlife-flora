@@ -419,6 +419,105 @@
                     @endforeach
 
                 </ul>
+                {{-- ================================================= --}}
+{{-- VOUCHER --}}
+{{-- ================================================= --}}
+
+<div
+    class="
+        border
+        rounded
+        p-3
+        mb-3
+        bg-white
+    "
+>
+
+    <label
+        class="
+            form-label
+            fw-bold
+        "
+    >
+        🎟 Mã giảm giá
+    </label>
+
+
+    <div class="input-group">
+
+        <input
+            type="text"
+            id="coupon_code"
+            class="
+                form-control
+                text-uppercase
+            "
+            value="{{
+                session(
+                    'coupon_code'
+                )
+            }}"
+            placeholder="VD: GREEN10"
+        >
+
+
+        <button
+            type="button"
+            id="apply_coupon_btn"
+            class="btn btn-success"
+        >
+            Áp dụng
+        </button>
+
+
+        <button
+            type="button"
+            id="remove_coupon_btn"
+            class="
+                btn
+                btn-outline-danger
+            "
+            style="{{
+                session('coupon_code')
+                    ? ''
+                    : 'display:none;'
+            }}"
+        >
+            Bỏ mã
+        </button>
+
+    </div>
+
+
+    <div
+        id="coupon_message"
+        class="
+            small
+            mt-2
+            {{
+                session('coupon_code')
+                    ? 'text-success'
+                    : 'text-muted'
+            }}
+        "
+    >
+
+        @if(session('coupon_code'))
+
+            Đang áp dụng mã
+            <strong>
+                {{ session('coupon_code') }}
+            </strong>
+
+        @else
+
+            Nhập mã khuyến mãi nếu bạn có.
+
+        @endif
+
+    </div>
+
+</div>
 
 
 
@@ -453,6 +552,45 @@
 
                 </div>
 
+{{-- GIẢM GIÁ --}}
+<div
+    id="discount_row"
+    class="
+        d-flex
+        justify-content-between
+        mb-2
+        text-success
+    "
+    style="{{
+        session(
+            'coupon_discount',
+            0
+        ) > 0
+            ? ''
+            : 'display:none;'
+    }}"
+>
+
+    <span>
+        🎟 Giảm giá:
+    </span>
+
+    <strong id="discount_text">
+
+        -
+        {{
+            number_format(
+                session(
+                    'coupon_discount',
+                    0
+                )
+            )
+        }}
+        VNĐ
+
+    </strong>
+
+</div>
 
                 <hr>
 
@@ -574,6 +712,49 @@ document.addEventListener(
                     : 0
             ) || 0;
 
+            /*
+|--------------------------------------------------------------------------
+| VOUCHER
+|--------------------------------------------------------------------------
+*/
+
+const couponCodeInput =
+    document.getElementById(
+        'coupon_code'
+    );
+
+const applyCouponBtn =
+    document.getElementById(
+        'apply_coupon_btn'
+    );
+
+const removeCouponBtn =
+    document.getElementById(
+        'remove_coupon_btn'
+    );
+
+const couponMessage =
+    document.getElementById(
+        'coupon_message'
+    );
+
+const discountRow =
+    document.getElementById(
+        'discount_row'
+    );
+
+const discountText =
+    document.getElementById(
+        'discount_text'
+    );
+
+
+let couponDiscount =
+    {{ (int) session(
+        'coupon_discount',
+        0
+    ) }};
+
 
 
         /*
@@ -667,6 +848,263 @@ document.addEventListener(
 
                 wardSelect.disabled =
                     true;
+
+                /*
+|--------------------------------------------------------------------------
+| ÁP DỤNG VOUCHER
+|--------------------------------------------------------------------------
+*/
+
+if (applyCouponBtn) {
+
+    applyCouponBtn.addEventListener(
+        'click',
+        async function () {
+
+            const code =
+                couponCodeInput
+                    .value
+                    .trim();
+
+            if (!code) {
+
+                couponMessage.className =
+                    'small mt-2 text-danger';
+
+                couponMessage.textContent =
+                    'Vui lòng nhập mã voucher.';
+
+                return;
+            }
+
+
+            applyCouponBtn.disabled =
+                true;
+
+            applyCouponBtn.textContent =
+                'Đang kiểm tra...';
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        "{{ route('coupon.apply') }}",
+                        {
+                            method:
+                                'POST',
+
+                            headers: {
+                                'Accept':
+                                    'application/json',
+
+                                'Content-Type':
+                                    'application/json',
+
+                                'X-CSRF-TOKEN':
+                                    '{{ csrf_token() }}'
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    code: code
+                                })
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.message
+                        ||
+                        'Voucher không hợp lệ.'
+                    );
+                }
+
+
+                couponDiscount =
+                    parseInt(
+                        data.discount
+                    ) || 0;
+
+
+                couponCodeInput.value =
+                    data.code;
+
+
+                couponMessage.className =
+                    'small mt-2 text-success';
+
+
+                couponMessage.textContent =
+                    data.message;
+
+
+                discountText.textContent =
+                    '-'
+                    +
+                    new Intl.NumberFormat(
+                        'vi-VN'
+                    ).format(
+                        couponDiscount
+                    )
+                    +
+                    ' VNĐ';
+
+
+                discountRow.style.display =
+                    'flex';
+
+
+                removeCouponBtn.style.display =
+                    'inline-block';
+
+
+                const currentFee =
+                    parseInt(
+                        shippingFeeInput
+                            ?.value
+                        || 0
+                    ) || 0;
+
+
+                updateTotals(
+                    currentFee
+                );
+
+
+            } catch (error) {
+
+                couponDiscount = 0;
+
+                couponMessage.className =
+                    'small mt-2 text-danger';
+
+                couponMessage.textContent =
+                    error.message;
+
+                discountRow.style.display =
+                    'none';
+
+
+                const currentFee =
+                    parseInt(
+                        shippingFeeInput
+                            ?.value
+                        || 0
+                    ) || 0;
+
+
+                updateTotals(
+                    currentFee
+                );
+
+            } finally {
+
+                applyCouponBtn.disabled =
+                    false;
+
+                applyCouponBtn.textContent =
+                    'Áp dụng';
+            }
+        }
+    );
+}
+
+
+
+/*
+|--------------------------------------------------------------------------
+| BỎ VOUCHER
+|--------------------------------------------------------------------------
+*/
+
+if (removeCouponBtn) {
+
+    removeCouponBtn.addEventListener(
+        'click',
+        async function () {
+
+            try {
+
+                const response =
+                    await fetch(
+                        "{{ route('coupon.remove') }}",
+                        {
+                            method:
+                                'DELETE',
+
+                            headers: {
+                                'Accept':
+                                    'application/json',
+
+                                'X-CSRF-TOKEN':
+                                    '{{ csrf_token() }}'
+                            }
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.message
+                        ||
+                        'Không thể bỏ voucher.'
+                    );
+                }
+
+
+                couponDiscount = 0;
+
+                couponCodeInput.value =
+                    '';
+
+                discountRow.style.display =
+                    'none';
+
+                removeCouponBtn.style.display =
+                    'none';
+
+                couponMessage.className =
+                    'small mt-2 text-muted';
+
+                couponMessage.textContent =
+                    'Đã bỏ mã giảm giá.';
+
+
+                const currentFee =
+                    parseInt(
+                        shippingFeeInput
+                            ?.value
+                        || 0
+                    ) || 0;
+
+
+                updateTotals(
+                    currentFee
+                );
+
+            } catch (error) {
+
+                couponMessage.className =
+                    'small mt-2 text-danger';
+
+                couponMessage.textContent =
+                    error.message;
+            }
+        }
+    );
+}    
 
 
                 updateTotals(0);
@@ -979,7 +1417,14 @@ document.addEventListener(
 
 
             const finalAmount =
-                subtotal + fee;
+    Math.max(
+        0,
+        subtotal
+        +
+        fee
+        -
+        couponDiscount
+    );
 
 
 

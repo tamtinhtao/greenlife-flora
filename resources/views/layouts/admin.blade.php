@@ -1442,279 +1442,231 @@
     <nav class="admin-menu">
 
 
-        <div class="admin-menu-title">
+    {{-- ===================================================== --}}
+    {{-- QUẢN LÝ HỆ THỐNG --}}
+    {{-- ===================================================== --}}
 
-            Quản lý hệ thống
-
-        </div>
-
-
-
-        <a
-            href="{{
-                route(
-                    'admin.dashboard'
-                )
-            }}"
-            class="
-                admin-menu-link
-                {{
-                    request()
-                        ->routeIs(
-                            'admin.dashboard'
-                        )
-                            ? 'active'
-                            : ''
-                }}
-            "
-        >
-
-            <span class="admin-menu-icon">
-                ▦
-            </span>
-
-            Dashboard
-
-        </a>
+    <div class="admin-menu-title">
+        Quản lý hệ thống
+    </div>
 
 
+    {{-- DASHBOARD --}}
+    <a
+        href="{{ route('admin.dashboard') }}"
+        class="
+            admin-menu-link
+            {{
+                request()->routeIs('admin.dashboard')
+                    ? 'active'
+                    : ''
+            }}
+        "
+    >
+        <span class="admin-menu-icon">
+            ▦
+        </span>
 
-        <a
-            href="{{
-                route(
-                    'admin.categories.index'
-                )
-            }}"
-            class="
-                admin-menu-link
-                {{
-                    request()
-                        ->routeIs(
-                            'admin.categories.*'
-                        )
-                            ? 'active'
-                            : ''
-                }}
-            "
-        >
-
-            <span class="admin-menu-icon">
-                ☷
-            </span>
-
-            Quản trị danh mục
-
-        </a>
+        Dashboard
+    </a>
 
 
+    {{-- DANH MỤC --}}
+    <a
+        href="{{ route('admin.categories.index') }}"
+        class="
+            admin-menu-link
+            {{
+                request()->routeIs('admin.categories.*')
+                    ? 'active'
+                    : ''
+            }}
+        "
+    >
+        <span class="admin-menu-icon">
+            ☷
+        </span>
 
-        <a
-            href="{{
-                route(
-                    'admin.products.index'
-                )
-            }}"
-            class="
-                admin-menu-link
-                {{
-                    request()
-                        ->routeIs(
-                            'admin.products.*'
-                        )
-                            ? 'active'
-                            : ''
-                }}
-            "
-        >
-
-            <span class="admin-menu-icon">
-                ▣
-            </span>
-
-            Quản trị sản phẩm
-
-        </a>
+        Quản trị danh mục
+    </a>
 
 
+    {{-- SẢN PHẨM --}}
+    <a
+        href="{{ route('admin.products.index') }}"
+        class="
+            admin-menu-link
+            {{
+                request()->routeIs('admin.products.*')
+                    ? 'active'
+                    : ''
+            }}
+        "
+    >
+        <span class="admin-menu-icon">
+            ▣
+        </span>
 
-        <a
-            href="{{
-                route(
-                    'admin.orders.index'
-                )
-            }}"
-            class="
-                admin-menu-link
-                {{
-                    request()
-                        ->routeIs(
-                            'admin.orders.*'
-                        )
-                            ? 'active'
-                            : ''
-                }}
-            "
-        >
-
-            <span class="admin-menu-icon">
-                ▤
-            </span>
-
-            Quản lý đơn hàng
-
-        </a>
+        Quản trị sản phẩm
+    </a>
 
 
+    {{-- ===================================================== --}}
+    {{-- VOUCHER --}}
+    {{-- ===================================================== --}}
 
-        <a
-            href="{{
-                route(
-                    'admin.users.index'
-                )
-            }}"
-            class="
-                admin-menu-link
-                {{
-                    request()
-                        ->routeIs(
-                            'admin.users.*'
-                        )
-                            ? 'active'
-                            : ''
-                }}
-            "
-        >
+    <a
+        href="{{ route('admin.coupons.index') }}"
+        class="
+            admin-menu-link
+            {{
+                request()->routeIs('admin.coupons.*')
+                    ? 'active'
+                    : ''
+            }}
+        "
+    >
+        <span class="admin-menu-icon">
+            🎟
+        </span>
 
-            <span class="admin-menu-icon">
-                ♟
-            </span>
-
-            Quản lý tài khoản
-
-        </a>
-        {{-- CHAT KHÁCH HÀNG --}}
-<a
-    href="{{ route('admin.chat.index') }}"
-    class="
-        admin-menu-link
-        {{
-            request()->routeIs('admin.chat.*')
-                ? 'active'
-                : ''
-        }}
-    "
->
-
-    <span class="admin-menu-icon">
-        💬
-    </span>
-
-    Chat khách hàng
+        Voucher - Khuyến mãi
+    </a>
 
 
-</a>
+    {{-- ĐƠN HÀNG --}}
+    <a
+        href="{{ route('admin.orders.index') }}"
+        class="
+            admin-menu-link
+            {{
+                request()->routeIs('admin.orders.*')
+                    ? 'active'
+                    : ''
+            }}
+        "
+    >
+        <span class="admin-menu-icon">
+            ▤
+        </span>
+
+        Quản lý đơn hàng
+    </a>
+
+
+    {{-- TÀI KHOẢN --}}
+    <a
+        href="{{ route('admin.users.index') }}"
+        class="
+            admin-menu-link
+            {{
+                request()->routeIs('admin.users.*')
+                    ? 'active'
+                    : ''
+            }}
+        "
+    >
+        <span class="admin-menu-icon">
+            ♟
+        </span>
+
+        Quản lý tài khoản
+    </a>
+
+
+    {{-- CHAT KHÁCH HÀNG --}}
+    <a
+        href="{{ route('admin.chat.index') }}"
+        class="
+            admin-menu-link
+            {{
+                request()->routeIs('admin.chat.*')
+                    ? 'active'
+                    : ''
+            }}
+        "
+    >
+        <span class="admin-menu-icon">
+            💬
+        </span>
+
+        Chat khách hàng
+    </a>
 
 
 
-        {{-- =====================================================
-             FINANCE + REPORT ĐƯỢC GOM CHUNG
-        ===================================================== --}}
+    {{-- ===================================================== --}}
+    {{-- TÀI CHÍNH & BÁO CÁO --}}
+    {{-- ===================================================== --}}
 
-        <div class="admin-menu-title">
-
-            Tài chính & Báo cáo
-
-        </div>
+    <div class="admin-menu-title">
+        Tài chính & Báo cáo
+    </div>
 
 
+    {{-- TỔNG QUAN TÀI CHÍNH --}}
+    <a
+        href="{{ route('admin.finance.index') }}"
+        class="
+            admin-menu-link
+            {{
+                request()->routeIs('admin.finance.index')
+                    ? 'active'
+                    : ''
+            }}
+        "
+    >
+        <span class="admin-menu-icon">
+            ₫
+        </span>
 
-        <a
-            href="{{
-                route(
-                    'admin.finance.index'
-                )
-            }}"
-            class="
-                admin-menu-link
-                {{
-                    request()
-                        ->routeIs(
-                            'admin.finance.index'
-                        )
-                            ? 'active'
-                            : ''
-                }}
-            "
-        >
-
-            <span class="admin-menu-icon">
-                ₫
-            </span>
-
-            Tổng quan tài chính
-
-        </a>
+        Tổng quan tài chính
+    </a>
 
 
-
-        <a
-            href="{{
-                route(
+    {{-- GIAO DỊCH --}}
+    <a
+        href="{{ route('admin.finance.transactions') }}"
+        class="
+            admin-menu-link
+            {{
+                request()->routeIs(
                     'admin.finance.transactions'
                 )
-            }}"
-            class="
-                admin-menu-link
-                {{
-                    request()
-                        ->routeIs(
-                            'admin.finance.transactions'
-                        )
-                            ? 'active'
-                            : ''
-                }}
-            "
-        >
+                    ? 'active'
+                    : ''
+            }}
+        "
+    >
+        <span class="admin-menu-icon">
+            💳
+        </span>
 
-            <span class="admin-menu-icon">
-                💳
-            </span>
-
-            Giao dịch thanh toán
-
-        </a>
+        Giao dịch thanh toán
+    </a>
 
 
+    {{-- BÁO CÁO --}}
+    <a
+        href="{{ route('admin.reports.index') }}"
+        class="
+            admin-menu-link
+            {{
+                request()->routeIs('admin.reports.*')
+                    ? 'active'
+                    : ''
+            }}
+        "
+    >
+        <span class="admin-menu-icon">
+            ▥
+        </span>
 
-        <a
-            href="{{
-                route(
-                    'admin.reports.index'
-                )
-            }}"
-            class="
-                admin-menu-link
-                {{
-                    request()
-                        ->routeIs(
-                            'admin.reports.*'
-                        )
-                            ? 'active'
-                            : ''
-                }}
-            "
-        >
+        Báo cáo doanh thu
+    </a>
 
-            <span class="admin-menu-icon">
-                ▥
-            </span>
 
-            Báo cáo doanh thu
-
-        </a>
-
-    </nav>
-    </nav>
+</nav>
 
 
 {{-- =====================================================

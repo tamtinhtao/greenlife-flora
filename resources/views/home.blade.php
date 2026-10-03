@@ -282,234 +282,7 @@
 {{-- NAVBAR --}}
 {{-- ===================================================== --}}
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-success mb-4">
-
-    <div class="container">
-
-        {{-- LOGO --}}
-        <a
-            class="navbar-brand fw-bold fs-4"
-            href="{{ route('home') }}"
-        >
-            🌿 GreenLife Flora
-        </a>
-
-
-        <div class="d-flex align-items-center gap-2">
-
-
-            {{-- ===================================================== --}}
-            {{-- CHƯA ĐĂNG NHẬP --}}
-            {{-- ===================================================== --}}
-
-            @guest
-
-                <a
-                    href="{{ route('login') }}"
-                    class="btn btn-outline-light btn-sm"
-                >
-                    🔐 Đăng Nhập
-                </a>
-
-                <a
-                    href="{{ route('register') }}"
-                    class="btn btn-light btn-sm text-success"
-                >
-                    📝 Đăng Ký
-                </a>
-
-            @endguest
-
-
-
-            {{-- ===================================================== --}}
-            {{-- ĐÃ ĐĂNG NHẬP --}}
-            {{-- ===================================================== --}}
-
-            @auth
-
-
-                {{-- ================================================= --}}
-                {{-- ADMIN --}}
-                {{-- ================================================= --}}
-
-                @if(auth()->user()->role === 'admin')
-
-                    <a
-                        href="{{ route('admin.products.index') }}"
-                        class="admin-menu-link
-                            {{ request()->routeIs('admin.products.*') ? 'active' : '' }}"
-                    >
-                        🌿 Sản phẩm
-                    </a>
-
-
-                    <a
-                        href="{{ route('admin.categories.index') }}"
-                        class="admin-menu-link
-                            {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}"
-                    >
-                        📂 Danh mục
-                    </a>
-
-
-                    <a
-                        href="{{ route('admin.orders.index') }}"
-                        class="admin-menu-link
-                            {{ request()->routeIs('admin.orders.*') ? 'active' : '' }}"
-                    >
-                        📦 Đơn hàng
-                    </a>
-
-
-                    <a
-                        href="{{ route('admin.users.index') }}"
-                        class="admin-menu-link
-                            {{ request()->routeIs('admin.users.*') ? 'active' : '' }}"
-                    >
-                        👥 Người dùng
-                    </a>
-
-
-                    <a
-                        href="{{ route('admin.reports.index') }}"
-                        class="admin-menu-link
-                            {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}"
-                    >
-                        📊 Báo cáo
-                    </a>
-
-                @endif
-
-
-
-                {{-- ================================================= --}}
-                {{-- USER --}}
-                {{-- ================================================= --}}
-
-                @if(auth()->user()->role === 'user')
-
-                    @php
-                        $navCart = session()->get('cart', []);
-
-                        $cartCount = array_sum(
-                            array_column($navCart, 'quantity')
-                        );
-                    @endphp
-
-
-                    <a
-                        href="{{ route('cart.index') }}"
-                        class="btn btn-light btn-sm position-relative"
-                    >
-                        🛒 Giỏ Hàng
-
-                        <span
-                            id="cart-count-badge"
-                            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                            style="
-                                font-size: 10px;
-                                {{ $cartCount <= 0 ? 'display:none;' : '' }}
-                            "
-                        >
-                            {{ $cartCount }}
-                        </span>
-                    </a>
-
-
-                    <a
-                        href="{{ route('my-orders.index') }}"
-                        class="btn btn-info btn-sm"
-                    >
-                        📦 Đơn Hàng Của Tôi
-                    </a>
-
-                @endif
-
-
-
-                {{-- ================================================= --}}
-                {{-- MENU TÀI KHOẢN --}}
-                {{-- ================================================= --}}
-
-                <div class="dropdown">
-
-                    <button
-                        class="admin-menu-link dropdown-toggle"
-                        type="button"
-                        id="accountDropdown"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                    >
-                        👤 {{ auth()->user()->name }}
-                    </button>
-
-
-                    <ul
-                        class="dropdown-menu dropdown-menu-end shadow"
-                        aria-labelledby="accountDropdown"
-                    >
-
-                        <li>
-
-                            <a
-                                class="dropdown-item"
-                                href="{{ route('account.profile') }}"
-                            >
-                                👤 Thông tin tài khoản
-                            </a>
-
-                        </li>
-
-
-                        <li>
-
-                            <a
-                                class="dropdown-item"
-                                href="{{ route('account.password') }}"
-                            >
-                                🔑 Đổi mật khẩu
-                            </a>
-
-                        </li>
-
-
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-
-
-                        <li>
-
-                            <form
-                                action="{{ route('logout') }}"
-                                method="POST"
-                            >
-
-                                @csrf
-
-                                <button
-                                    type="submit"
-                                    class="dropdown-item text-danger"
-                                >
-                                    🚪 Đăng xuất
-                                </button>
-
-                            </form>
-
-                        </li>
-
-                    </ul>
-
-                </div>
-
-            @endauth
-
-        </div>
-
-    </div>
-
-</nav>
+@include('partials.store-navbar')
 
 
 
@@ -809,7 +582,67 @@
 
                                 @if(auth()->user()->role === 'user')
 
+                                @php
 
+    $isWishlisted =
+        auth()
+            ->user()
+            ->wishlistProducts
+            ->contains(
+                'id',
+                $item->id
+            );
+
+@endphp
+
+
+<form
+    action="{{
+        $isWishlisted
+            ? route(
+                'wishlist.destroy',
+                $item->id
+            )
+            : route(
+                'wishlist.store',
+                $item->id
+            )
+    }}"
+    method="POST"
+>
+
+    @csrf
+
+
+    @if($isWishlisted)
+
+        @method('DELETE')
+
+    @endif
+
+
+    <button
+        type="submit"
+        class="
+            btn
+            {{ $isWishlisted
+                ? 'btn-danger'
+                : 'btn-outline-danger'
+            }}
+            btn-sm
+        "
+        title="{{
+            $isWishlisted
+                ? 'Bỏ yêu thích'
+                : 'Thêm vào yêu thích'
+        }}"
+    >
+
+        {{ $isWishlisted ? '♥' : '♡' }}
+
+    </button>
+
+</form>
                                     {{-- THÊM VÀO GIỎ --}}
 
                                     <button
