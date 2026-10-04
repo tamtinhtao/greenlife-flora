@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title>Đặt Hàng & Thanh Toán</title>
 
@@ -65,7 +66,7 @@
     {{-- FORM ĐẶT HÀNG - CHỈ CÓ 1 FORM --}}
     {{-- ================================================= --}}
 
-    <form action="{{ route('user.payment.process') }}" method="POST" class="row">
+    <form action="{{ route('user.payment.process') }}" method="POST" class="row g-4 align-items-start">
 
         @csrf
 
@@ -113,7 +114,7 @@
         {{-- CỘT TRÁI: THÔNG TIN NGƯỜI NHẬN --}}
         {{-- ================================================= --}}
 
-        <div class="col-md-7">
+        <div class="col-12 col-lg-7">
 
             <div class="card p-4 shadow-sm mb-3">
 
@@ -358,11 +359,15 @@
 
 
 
+            </div>
+
+        </div>
+
         {{-- ================================================= --}}
         {{-- CỘT PHẢI: TÓM TẮT ĐƠN HÀNG --}}
         {{-- ================================================= --}}
 
-        <div class="col-md-5">
+        <div class="col-12 col-lg-5">
 
             <div class="card p-4 shadow-sm bg-light">
 
@@ -383,7 +388,7 @@
 
 
                         <li
-                            class="list-group-item d-flex justify-content-between align-items-center"
+                            class="list-group-item d-flex justify-content-between align-items-center gap-3"
                         >
 
                             <div>
@@ -408,7 +413,7 @@
                             </div>
 
 
-                            <span class="fw-bold">
+                            <span class="fw-bold text-nowrap">
 
                                 {{ number_format($subtotal) }}đ
 
